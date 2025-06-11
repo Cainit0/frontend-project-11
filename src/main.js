@@ -1,24 +1,28 @@
 import './style.css'
-import javascriptLogo from './javascript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.js'
+import '../node_modules/bootstrap/dist/css/bootstrap.min.css'
 
 document.querySelector('#app').innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-      <img src="${javascriptLogo}" class="logo vanilla" alt="JavaScript logo" />
-    </a>
-    <h1>Hello Vite!</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite logo to learn more
-    </p>
+  <div class="container mt-5">
+    <h1 class="mb-4">RSS Feed Manager</h1>
+    <form id="rssForm" class="mb-3">
+      <div class="mb-3">
+        <label for="feedUrl" class="form-label">RSS Feed URL</label>
+        <input 
+          type="url" 
+          class="form-control" 
+          id="feedUrl"
+          placeholder="https://example.com/feed.xml" 
+          required
+        >
+      </div>
+      <button type="submit" class="btn btn-primary">Add Feed</button>
+    </form>
   </div>
 `
 
-setupCounter(document.querySelector('#counter'))
+document.getElementById('rssForm').addEventListener('submit', e => {
+  e.preventDefault()
+  const url = document.getElementById('feedUrl').value
+  alert(`Added RSS Feed: ${url}`)
+  e.target.reset()
+})
