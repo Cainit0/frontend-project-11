@@ -1,28 +1,41 @@
-import './style.css'
-import '../node_modules/bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './style.css';
+import { initView, renderFeeds, setInputState, resetForm } from './lib/view.js';
+import { validateFeed } from './lib/validation.js';
 
-document.querySelector('#app').innerHTML = `
-  <div class="container mt-5">
-    <h1 class="mb-4">RSS Feed Manager</h1>
-    <form id="rssForm" class="mb-3">
-      <div class="mb-3">
-        <label for="feedUrl" class="form-label">RSS Feed URL</label>
-        <input 
-          type="url" 
-          class="form-control" 
-          id="feedUrl"
-          placeholder="https://example.com/feed.xml" 
-          required
-        >
-      </div>
-      <button type="submit" class="btn btn-primary">Add Feed</button>
-    </form>
-  </div>
-`
+// Состояние приложения
+const state = {
+  feeds: []
+};
 
-document.getElementById('rssForm').addEventListener('submit', e => {
-  e.preventDefault()
-  const url = document.getElementById('feedUrl').value
-  alert(`Added RSS Feed: ${url}`)
-  e.target.reset()
-})
+// Инициализация приложения
+const initApp = () => {
+  const view = initView();
+  document.getElementById('app').appendChild(view.container);
+  
+  // Рендер существующих фидов
+  renderFeeds(view.feedsContainer, state.feeds);
+  
+  // Обработка отправки формы
+  view.form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const url = view.input.value.trim();
+    const validation = await validateFeed(url, state.feeds);
+    
+    if (!validation.isValid) {
+      const error = validation.errors.find(e => e.path === 'url');
+      setInputState(view.input, view.errorFeedback, false, error?.message || 'Invalid URL');
+      return;
+    }
+    
+    // Добавление фида
+    state.feeds.push(url);
+    
+    // Обновление UI
+    resetForm(view.form, view.input);
+    renderFeeds(view.feedsContainer, state.feeds);
+  });
+};
+
+document.addEventListener('DOMContentLoaded', initApp);

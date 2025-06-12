@@ -5,3 +5,13 @@ body {
 .container {
   max-width: 600px;
 }
+
+.list-group-item {
+  overflow-wrap: anywhere;
+}
+
+.form-control.is-invalid {
+  border-color: #dc3545;
+  background-image: none;
+  padding-right: 0.75rem;
+}
