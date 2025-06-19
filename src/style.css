@@ -1,17 +1,19 @@
-body {
-  padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-.container {
-  max-width: 600px;
+.list-group-item h5 {
+  margin-bottom: 0.3rem;
 }
 
-.list-group-item {
-  overflow-wrap: anywhere;
+.list-group-item p {
+  margin-bottom: 0;
+  color: #666;
+  font-size: 0.9rem;
 }
 
-.form-control.is-invalid {
-  border-color: #dc3545;
-  background-image: none;
-  padding-right: 0.75rem;
+.spinner-border {
+  vertical-align: text-top;
+  margin-right: 0.5rem;
+}
+
+#feedsContainer, #postsContainer {
+  max-height: 500px;
+  overflow-y: auto;
 }
