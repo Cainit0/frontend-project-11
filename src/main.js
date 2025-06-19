@@ -1,10 +1,18 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './style.css';
 import * as yup from 'yup';
-import initI18n from './i18n';
+import initI18n from './locales/index.js';
 import i18next from 'i18next';
 
-await initI18n();
+async function initializeApp() {
+  try {
+    await initII8n();
+  } catch (error) {
+    console.error("Application initialization failed:", error);
+  }
+}
+
+initializeApp();
 
 const state = {
   feeds: [],
