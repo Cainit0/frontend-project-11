@@ -18,7 +18,9 @@ const state = {
   feeds: [],
   posts: [],
   error: null,
-  loading: false
+  loading: false,
+  updateTimer: null,
+  activeRequests: 0
 };
 
 const generateId = () => crypto.randomUUID();
@@ -42,7 +44,8 @@ const parseRss = (xmlString) => {
     const posts = Array.from(xmlDoc.querySelectorAll('item')).map(item => ({
       id: generateId(),
       title: item.querySelector('title')?.textContent || i18next.t('noTitle'),
-      link: item.querySelector('link')?.textContent || '#'
+      link: item.querySelector('link')?.textContent || '#',
+      feedUrl: url
     }));
     
     return { feed, posts };
@@ -53,6 +56,7 @@ const parseRss = (xmlString) => {
 
 const fetchRss = async (url) => {
   try {
+    state.activeRequests++;
     state.loading = true;
     render();
     
@@ -62,8 +66,50 @@ const fetchRss = async (url) => {
     const data = await response.json();
     return parseRss(data.contents);
   } finally {
-    state.loading = false;
+    state.activeRequests--;
+    state.loading = state.activeRequests > 0;
+    render();
   }
+};
+
+const checkForNewPosts = async () => {
+  if (state.feeds.length === 0 || state.activeRequests > 0) return;
+  
+  try {
+    state.loading = true;
+    render();
+    
+    const newPosts = [];
+    
+    await Promise.all(state.feeds.map(async (feed) => {
+      try {
+        const { posts: fetchedPosts } = await fetchRss(feed.url);
+        
+        const existingLinks = new Set(state.posts.map(post => post.link));
+        const newFeedPosts = fetchedPosts.filter(post => !existingLinks.has(post.link));
+        
+        newPosts.push(...newFeedPosts);
+      } catch (err) {
+        console.error(`Failed to update feed ${feed.url}:`, err);
+      }
+    }));
+    
+    if (newPosts.length > 0) {
+      state.posts = [...newPosts, ...state.posts];
+      renderPosts();
+    }
+  } catch (err) {
+    state.error = i18next.t('errors.updateError');
+    renderError();
+  } finally {
+    state.loading = false;
+    scheduleNextUpdate();
+  }
+};
+
+const scheduleNextUpdate = () => {
+  if (state.updateTimer) clearTimeout(state.updateTimer);
+  state.updateTimer = setTimeout(checkForNewPosts, 5000);
 };
 
 const container = document.createElement('div');
@@ -115,13 +161,13 @@ const feedsContainer = container.querySelector('#feedsContainer');
 const postsContainer = container.querySelector('#postsContainer');
 const errorContainer = container.querySelector('#errorContainer');
 
-const showError = (message) => {
-  if (!message) {
+const renderError = () => {
+  if (!state.error) {
     errorContainer.classList.add('d-none');
     return;
   }
   
-  errorContainer.textContent = message;
+  errorContainer.textContent = state.error;
   errorContainer.classList.remove('d-none');
 };
 
@@ -137,6 +183,7 @@ const renderFeeds = () => {
         <div class="list-group-item">
           <h5 class="mb-1">${feed.title}</h5>
           <p class="mb-1">${feed.description}</p>
+          <small class="text-muted">${feed.url}</small>
         </div>
       `).join('')}
     </div>
@@ -153,7 +200,8 @@ const renderPosts = () => {
     <div class="list-group">
       ${state.posts.map(post => `
         <a href="${post.link}" target="_blank" class="list-group-item list-group-item-action">
-          ${post.title}
+          <div>${post.title}</div>
+          <small class="text-muted">${post.feedUrl}</small>
         </a>
       `).join('')}
     </div>
@@ -163,13 +211,13 @@ const renderPosts = () => {
 const render = () => {
   renderFeeds();
   renderPosts();
-  showError(state.error);
+  renderError();
   
   const button = form.querySelector('button');
+  button.disabled = state.loading;
   button.innerHTML = state.loading 
     ? `<span class="spinner-border spinner-border-sm"></span> ${i18next.t('loading')}`
-    : i18next.next.t('submitButton');
-  button.disabled = state.loading;
+    : i18next.t('submitButton');
 };
 
 const createFeedSchema = () => yup.object({
@@ -202,9 +250,19 @@ form.addEventListener('submit', async (e) => {
     const { feed, posts } = await fetchRss(url);
     
     state.feeds.push({ ...feed, id: generateId(), url });
-    state.posts = [...posts, ...state.posts]; // Новые посты сверху
+    
+    const postsWithSource = posts.map(post => ({
+      ...post,
+      feedUrl: url
+    }));
+    
+    state.posts = [...postsWithSource, ...state.posts];
     
     resetForm();
+    
+    if (state.feeds.length === 1) {
+      scheduleNextUpdate();
+    }
   } catch (err) {
     if (err.name === 'ValidationError') {
       const error = err.inner.find(e => e.path === 'url');
@@ -216,8 +274,7 @@ form.addEventListener('submit', async (e) => {
     }
     
     state.error = err.message;
-  } finally {
-    render();
+    renderError();
   }
 });
 
