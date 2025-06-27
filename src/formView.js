@@ -1,3 +1,5 @@
+import { i18nInstance } from './app';
+
 const headerTextEl = document.querySelector('#header-text');
 const leadEl = document.querySelector('#lead');
 const sampleEl = document.querySelector('#sample');
@@ -8,17 +10,18 @@ const label = document.querySelector('label');
 const feedbackWrapperEl = document.querySelector('#feedback-wrapper');
 
 export const render = (watchedState) => {
-  label.innerText = watchedState.uiState.label;
-  headerTextEl.innerText = watchedState.uiState.header;
-  leadEl.innerText = watchedState.uiState.lead;
-  sampleEl.innerText = watchedState.uiState.sample;
-  btnAdd.value = watchedState.uiState.buttonText;
+  label.innerText = i18nInstance.t('label');
+  headerTextEl.innerText = i18nInstance.t('header');
+  leadEl.innerText = i18nInstance.t('lead');
+  sampleEl.innerText = i18nInstance.t('sample');
+  btnAdd.value = i18nInstance.t('buttonText');
+  input.placeholder = i18nInstance.t('placeholder');
 
   if (watchedState.formState === 'filling') {
     input.classList.remove('is-invalid');
     feedbackWrapperEl.innerHTML = `More actions
     <p id="feedback" class="feedback m-0 position-absolute small">
-      ${watchedState.uiState.feedback}
+      ${i18nInstance.t('feedbackFilling')}
     </p>`;
   }
 
@@ -26,7 +29,7 @@ export const render = (watchedState) => {
     input.classList.add('is-invalid');
     feedbackWrapperEl.innerHTML = `More actions
       <p id="feedback" class="feedback m-0 position-absolute small text-danger">
-      ${watchedState.uiState.feedback}
+      ${i18nInstance.t('feedbackInvalid')}
       </p>`;
   }
 
@@ -34,17 +37,46 @@ export const render = (watchedState) => {
     input.classList.add('is-invalid');
     feedbackWrapperEl.innerHTML = `More actions
     <p id="feedback" class="feedback m-0 position-absolute small text-danger">
-    ${watchedState.uiState.feedback}
+    ${i18nInstance.t('feedbackNotUnique')}
     </p>`;
   }
 
-  if (watchedState.formState === 'submitted') {
+  if (watchedState.formState === 'awaiting') {
+    btnAdd.setAttribute('disabled', true);
     input.classList.remove('is-invalid');
-    feedbackWrapperEl.innerHTML = `More actions
+    feedbackWrapperEl.innerHTML = `
     <p id="feedback" 
-      class="feedback m-0 position-absolute small text-success">
-      ${watchedState.uiState.feedback}
+      class="feedback m-0 position-absolute small">
+      ${''}
     </p>`;
     input.value = '';
   }
+
+  if (watchedState.formState === 'invalid_rss') {
+    btnAdd.removeAttribute('disabled');
+    input.classList.remove('is-invalid');
+    feedbackWrapperEl.innerHTML = `
+    <p id="feedback" 
+      class="feedback m-0 position-absolute small text-danger">
+      ${'Ресурс не содержит валидный RSS'}
+    </p>`;
+    input.value = '';
+  }
+
+  if (watchedState.formState === 'submitted') {
+    btnAdd.removeAttribute('disabled');
+    feedbackWrapperEl.innerHTML = `More actions
+    <p id="feedback" 
+      class="feedback m-0 position-absolute small text-success">
+      ${i18nInstance.t('feedbackSubmitted')}
+    </p>`;
+    input.value = '';
+  }
+};
+
+export const addFormInputHandler = (handler) => {
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handler(input.value);
+  });
 };
