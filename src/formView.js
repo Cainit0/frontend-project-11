@@ -4,7 +4,7 @@ const sampleEl = document.querySelector('#sample');
 const btnAdd = document.querySelector('#button-add');
 const form = document.querySelector('form');
 const input = document.querySelector('#url-input');
-const label = document.querySelector('label');More actions
+const label = document.querySelector('label');
 const feedbackWrapperEl = document.querySelector('#feedback-wrapper');
 
 export const render = (watchedState) => {
