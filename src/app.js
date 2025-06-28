@@ -8,6 +8,7 @@ import { addFormInputHandler, render } from './formView';
 import i18n from 'i18next';
 import locales from './locales/index.js';
 import { XMLParser } from 'fast-xml-parser';
+import _ from 'lodash';
 
 export const i18nInstance = i18n.createInstance();
 const { ru } = locales;
@@ -56,8 +57,8 @@ export const app = () => {
     inputSchema
       .validate(value)
       .then((value) => {
-        state.links.push(value);
         watchedState.formState = 'awaiting';
+        watchedState.links.push(value);
         return getRssData(value);
       })
       .then((response) => {
@@ -86,13 +87,47 @@ export const app = () => {
 
   addFormInputHandler(handleFormInput);
 
-  const getRssData = (url) => {
+  const updateFeed = () => {
+    if (watchedState.links.length > 0) {
+      watchedState.links.forEach((link) => {
+        getRssData(link)
+          .then((response) => {
+            if (response.data.status.http_code !== 200) {
+              console.log(response.data.status);
+              throw new Error('invalid rss data', response.data.status);
+            }
+            if (response.data.status.http_code == 200) {
+              return response.data.contents;
+            }
+          })
+          .then((data) => {
+            const newData = rssParser(data);
+            const currentPosts = newData.posts;
+            const freshPosts = currentPosts.filter((newPost) => {
+              return !watchedState.posts.some((loadedPost) => {
+                return _.isEqual(loadedPost, newPost);
+              });
+            });
+            console.log(freshPosts);
+            watchedState.posts.push(...freshPosts);
+          })
+          .catch((err) => {
+            console.error(err.message);
+          });
+      });
+    }
+    setTimeout(updateFeed, 5000);
+  };
+
+  updateFeed();
+
+  function getRssData(url) {
     return axios.get(
       `https://allorigins.hexlet.app/get?url=${encodeURIComponent(url)}`,
     );
-  };
+  }
 
-  const rssParser = (xml) => {
+  function rssParser(xml) {
     const parser = new XMLParser();
     const parsedXML = parser.parse(xml);
     const channelData = {
@@ -103,7 +138,7 @@ export const app = () => {
       posts: parsedXML.rss.channel.item,
     };
     return channelData;
-  };
+  }
 
   const inputSchema = yup
     .string()
