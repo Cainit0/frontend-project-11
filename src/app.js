@@ -9,7 +9,7 @@ import * as yup from 'yup';
 import locales from './locales/index.js';
 import _ from 'lodash';
 
-import { getRssData, rssParser, inputSchema } from './helpers.js';
+import { getRssData, rssParser } from './helpers.js';
 
 import { addFormInputHandler, renderForm } from './Views/formView';
 import {
@@ -72,21 +72,14 @@ export const app = () => {
       watchedState.formState = 'filling';
     });
 
-  const handleFormInput = (value) => {
+  const handleFormInput = (inputLink) => {
     inputSchema
-      .validate(value)
-      .then((value) => {
+      .validate(inputLink)
+      .then((validLink) => {
         watchedState.formState = 'awaiting';
-        watchedState.links.push(value);
-        return getRssData(value);
+        return getRssData(validLink);
       })
       .then((response) => {
-        if (response.data.status.error) {
-          watchedState.formState = 'invalid_rss';
-          throw new Error(
-            `Absolutely nothing on that link ${response.data.status.url}`,
-          );
-        }
         if (response.data.status.http_code !== 200) {
           watchedState.formState = 'invalid_rss';
           throw new Error(
@@ -98,12 +91,20 @@ export const app = () => {
         }
       })
       .then((contents) => {
-        const { channel, posts } = rssParser(contents);
-        watchedState.channels.push(channel);
-        watchedState.posts.push(...posts.reverse());
-        watchedState.formState = 'submitted';
+        const rss = rssParser(contents);
+        if (!rss) {
+          watchedState.formState = 'parsing_error';
+          throw new Error('XML document is not RSS');
+        } else {
+          watchedState.links.push(inputLink);
+          const { channel, posts } = rss;
+          watchedState.channels.push(channel);
+          watchedState.posts.push(...posts.reverse());
+          watchedState.formState = 'submitted';
+        }
       })
       .catch((err) => {
+        if (err.code === 'ERR_NETWORK') watchedState.formState = 'network_error';
         console.error(err.message);
       });
   };
@@ -151,11 +152,13 @@ export const app = () => {
 
   const inputSchema = yup
     .string()
-    .required('no_input')
+    .required(() => {
+      watchedState.formState = 'no_input';
+      return `Input URL is empty`;
+    })
     .trim()
     .url((err) => {
       watchedState.formState = 'invalid';
-      watchedState.uiState.feedback = i18nInstance.t('feedbackInvalid');
       return `The value ${err.value} is not a valid URL.`;
     })
     .test(
@@ -165,7 +168,6 @@ export const app = () => {
         const isUnique = !state.links.includes(url);
         if (!isUnique) {
           watchedState.formState = 'not_unique';
-          watchedState.uiState.feedback = i18nInstance.t('feedbackNotUnique');
         }
         return isUnique;
       },
