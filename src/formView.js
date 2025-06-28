@@ -1,4 +1,5 @@
 import { i18nInstance } from './app';
+import _ from 'lodash';
 
 const headerTextEl = document.querySelector('#header-text');
 const leadEl = document.querySelector('#lead');
@@ -10,6 +11,9 @@ const label = document.querySelector('label');
 const feedbackWrapperEl = document.querySelector('#feedback-wrapper');
 const feedsEl = document.querySelector('.feeds');
 const postsEl = document.querySelector('.posts');
+const modalTitle = document.querySelector('.modal-title');
+const modalBody = document.querySelector('.modal-body');
+const fullArticleButton = document.querySelector('.full-article');
 
 export const render = (watchedState) => {
   label.innerText = i18nInstance.t('label');
@@ -105,19 +109,20 @@ export const render = (watchedState) => {
     </div>`;
     const postsUl = postsEl.querySelector('ul');
     watchedState.posts.forEach((post) => {
+      const isRead = watchedState.uiState.readPosts.some(
+        (readPost) => readPost.link === post.link,
+      );
       const postlHTML = `
       <li
       class="list-group-item d-flex justify-content-between align-items-start border-0 border-end-0"
     >
       <a
         href="${post.link}"
-        class="fw-bold"
+        class="${isRead ? 'fw-normal link-secondary' : 'fw-bold'}"
         data-id="6"
         target="_blank"
         rel="noopener noreferrer"
-      >
-      ${post.title}
-      </a>
+      >${post.title}</a>
       <button
         type="button"
         class="btn btn-outline-primary btn-sm"
@@ -132,11 +137,24 @@ export const render = (watchedState) => {
       postsUl.insertAdjacentHTML('afterbegin', postlHTML);
     });
   }
+
+  modalTitle.innerText = watchedState.uiState.modalPost.title;
+  modalBody.innerText = watchedState.uiState.modalPost.description;
+  fullArticleButton.href = watchedState.uiState.modalPost.link;
 };
 
 export const addFormInputHandler = (handler) => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     handler(input.value);
+  });
+};
+
+export const addShowButtonHandler = (handler) => {
+  postsEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (e.target.type !== 'button') return;
+    const postLink = e.target.previousElementSibling.href;
+    handler(postLink);
   });
 };
